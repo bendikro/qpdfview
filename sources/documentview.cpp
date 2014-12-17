@@ -67,6 +67,7 @@ along with qpdfview.  If not, see <http://www.gnu.org/licenses/>.
 #include "searchtask.h"
 #include "miscellaneous.h"
 #include "documentlayout.h"
+#include "mainwindow.h"
 
 namespace
 {
@@ -870,6 +871,8 @@ bool DocumentView::refresh()
             return false;
         }
 
+        MainWindow::instance()->m_outlineView->saveExpansionState(m_outlineModel->invisibleRootItem()->index());
+
         qreal left = 0.0, top = 0.0;
         saveLeftAndTop(left, top);
 
@@ -888,6 +891,8 @@ bool DocumentView::refresh()
 
         emit numberOfPagesChanged(m_pages.count());
         emit currentPageChanged(m_currentPage);
+        MainWindow::instance()->m_outlineView->loadExpansionState(m_outlineModel->invisibleRootItem()->index());
+        MainWindow::instance()->m_outlineView->restoreExpansion(m_outlineModel->invisibleRootItem()->index());
     }
 
     return document != 0;

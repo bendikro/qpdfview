@@ -126,6 +126,8 @@ Database* MainWindow::s_database = 0;
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
+    s_instance = this;
+
     if(s_settings == 0)
     {
         s_settings = Settings::instance();
@@ -164,6 +166,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     }
 
     on_tabWidget_currentChanged(m_tabWidget->currentIndex());
+}
+
+MainWindow* MainWindow::s_instance = 0;
+
+MainWindow* MainWindow::instance()
+{
+    return s_instance;
 }
 
 QSize MainWindow::sizeHint() const
@@ -2173,6 +2182,11 @@ void MainWindow::prepareStyle()
     qApp->setStyle(style);
 }
 
+TreeView* MainWindow::outlineView() const
+{
+    return m_outlineView;
+}
+
 DocumentView* MainWindow::currentTab() const
 {
     return qobject_cast< DocumentView* >(m_tabWidget->currentWidget());
@@ -2756,7 +2770,7 @@ void MainWindow::createDocks()
 
     m_outlineDock = createDock(tr("&Outline"), QLatin1String("outlineDock"), QKeySequence(Qt::Key_F6));
 
-    m_outlineView = new TreeView(Qt::UserRole + 4, this);
+    m_outlineView = new TreeView(Qt::UserRole + 4, Qt::UserRole + 5, this);
     m_outlineView->setAlternatingRowColors(true);
     m_outlineView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_outlineView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);

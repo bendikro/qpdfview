@@ -54,6 +54,7 @@ class SearchModel;
 class SearchTask;
 class PresentationView;
 class ShortcutHandler;
+class MainWindow;
 struct DocumentLayout;
 
 class DocumentView : public QGraphicsView

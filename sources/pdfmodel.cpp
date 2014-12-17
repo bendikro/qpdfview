@@ -108,6 +108,7 @@ void loadOutline(Poppler::Document* document, const QDomNode& node, QStandardIte
         item->setData(page, Qt::UserRole + 1);
         item->setData(left, Qt::UserRole + 2);
         item->setData(top, Qt::UserRole + 3);
+        item->setData(element.tagName(), Qt::UserRole + 5);
 
         QStandardItem* pageItem = item->clone();
         pageItem->setText(QString::number(page));

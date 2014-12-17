@@ -68,12 +68,17 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
     friend class MainWindowAdaptor;
-    
+
 public:
     explicit MainWindow(QWidget* parent = 0);
+    static MainWindow* instance();
 
     QSize sizeHint() const;
     QMenu* createPopupMenu();
+
+    TreeView* outlineView() const;
+    static MainWindow* s_instance;
+    TreeView* m_outlineView;
 
 public slots:
     bool open(const QString& filePath, int page = -1, const QRectF& highlight = QRectF(), bool quiet = false);
@@ -387,7 +392,6 @@ private:
     void createToolBars();
 
     QDockWidget* m_outlineDock;
-    TreeView* m_outlineView;
 
     QDockWidget* m_propertiesDock;
     QTableView* m_propertiesView;

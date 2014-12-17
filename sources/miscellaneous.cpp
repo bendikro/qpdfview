@@ -236,8 +236,8 @@ void TabWidget::tabRemoved(int index)
     }
 }
 
-TreeView::TreeView(int expansionRole, QWidget* parent) : QTreeView(parent),
-    m_expansionRole(expansionRole)
+TreeView::TreeView(int expansionRole, int expansionIDRole, QWidget* parent) : QTreeView(parent),
+m_expansionRole(expansionRole), m_expansionIDRole(expansionIDRole)
 {
     connect(this, SIGNAL(expanded(QModelIndex)), SLOT(on_expanded(QModelIndex)));
     connect(this, SIGNAL(collapsed(QModelIndex)), SLOT(on_collapsed(QModelIndex)));
@@ -306,6 +306,39 @@ void TreeView::restoreExpansion(const QModelIndex& index)
     for(int row = 0; row < model()->rowCount(index); ++row)
     {
         restoreExpansion(model()->index(row, 0, index));
+    }
+}
+
+void TreeView::saveExpansionState(const QModelIndex& index)
+{
+    if (index.isValid()) {
+        QVariant qv = index.data(m_expansionIDRole);
+        if (isExpanded(index)) {
+            storedExpansions << index.data(m_expansionIDRole).toString();
+        }
+    }
+    else {
+        // Root element, so clear list
+        storedExpansions.clear();
+    }
+
+    for(int row = 0; row < model()->rowCount(index); ++row) {
+        saveExpansionState(model()->index(row, 0, index));
+    }
+}
+
+void TreeView::loadExpansionState(const QModelIndex& index)
+{
+    if(index.isValid()) {
+        QVariant qv = index.data(m_expansionIDRole);
+
+        if (storedExpansions.indexOf(qv.toString()) != -1) {
+            model()->setData(index, true, m_expansionRole);
+        }
+    }
+
+    for(int row = 0; row < model()->rowCount(index); ++row) {
+        loadExpansionState(model()->index(row, 0, index));
     }
 }
 
