@@ -863,6 +863,8 @@ bool DocumentView::open(const QString& filePath)
             return false;
         }
 
+        emit documentAboutToChange();
+
         m_fileInfo.setFile(filePath);
         m_wasModified = false;
 
@@ -912,6 +914,8 @@ bool DocumentView::refresh()
 
             return false;
         }
+
+        emit documentAboutToChange();
 
         qreal left = 0.0, top = 0.0;
         saveLeftAndTop(left, top);

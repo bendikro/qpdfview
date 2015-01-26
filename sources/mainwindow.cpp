@@ -333,6 +333,7 @@ bool MainWindow::openInNewTab(const QString& filePath, int page, const QRectF& h
 
         on_thumbnails_dockLocationChanged(dockWidgetArea(m_thumbnailsDock));
 
+        connect(newTab, SIGNAL(documentAboutToChange()), SLOT(on_currentTab_documentAboutToChange()));
         connect(newTab, SIGNAL(documentChanged()), SLOT(on_currentTab_documentChanged()));
 
         connect(newTab, SIGNAL(numberOfPagesChanged(int)), SLOT(on_currentTab_numberOfPagesChaned(int)));
@@ -499,6 +500,8 @@ void MainWindow::on_tabWidget_currentChanged(int index)
 
     m_searchDock->toggleViewAction()->setEnabled(hasCurrent);
 
+    on_currentTab_documentAboutToChange();
+
     if(hasCurrent)
     {
         m_saveCopyAction->setEnabled(currentTab()->canSave());
@@ -642,6 +645,15 @@ void MainWindow::on_tabWidget_tabContextMenuRequested(const QPoint& globalPos, i
     on_tabWidget_currentChanged(m_tabWidget->currentIndex());
 }
 
+void MainWindow::on_currentTab_documentAboutToChange()
+{
+    if(senderIsCurrentTab())
+    {
+        m_outlineView->storeItemExpansion();
+        m_outlineView->storeScrollBarPositions();
+    }
+}
+
 void MainWindow::on_currentTab_documentChanged()
 {
     for(int index = 0, count = m_tabWidget->count(); index < count; ++index)
@@ -667,7 +679,8 @@ void MainWindow::on_currentTab_documentChanged()
 
     if(senderIsCurrentTab())
     {
-        m_outlineView->restoreExpansion();
+        m_outlineView->restoreItemExpansion();
+        m_outlineView->restoreScrollBarPositions();
 
         setWindowTitleForCurrentTab();
     }

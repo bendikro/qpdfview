@@ -30,6 +30,8 @@ along with qpdfview.  If not, see <http://www.gnu.org/licenses/>.
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QScrollBar>
+#include <QStandardItemModel>
 #include <QTimer>
 #include <QToolTip>
 #include <QVBoxLayout>
@@ -52,6 +54,13 @@ inline bool isPrintable(const QString& string)
     }
 
     return true;
+}
+
+inline QStandardItem* invisibleRootItem(QTreeView* view)
+{
+    QStandardItemModel* model = qobject_cast< QStandardItemModel* >(view->model());
+
+    return model != 0 ? model->invisibleRootItem() : 0;
 }
 
 } // anonymous
@@ -297,8 +306,6 @@ void TabWidget::tabRemoved(int index)
 TreeView::TreeView(int expansionRole, QWidget* parent) : QTreeView(parent),
     m_expansionRole(expansionRole)
 {
-    connect(this, SIGNAL(expanded(QModelIndex)), SLOT(on_expanded(QModelIndex)));
-    connect(this, SIGNAL(collapsed(QModelIndex)), SLOT(on_collapsed(QModelIndex)));
 }
 
 void TreeView::expandAbove(const QModelIndex& child)
@@ -349,11 +356,34 @@ void TreeView::collapseAll(const QModelIndex& index)
     }
 }
 
-void TreeView::restoreExpansion(const QModelIndex& index)
+void TreeView::storeItemExpansion(const QModelIndex& index)
 {
+    if(model() == 0)
+    {
+        return;
+    }
+
     if(index.isValid())
     {
-        const bool expanded = index.data(m_expansionRole).toBool();
+        model()->setData(index, isExpanded(index), m_expansionRole);
+    }
+
+    for(int row = 0, rowCount = model()->rowCount(index); row < rowCount; ++row)
+    {
+        restoreItemExpansion(model()->index(row, 0, index));
+    }
+}
+
+void TreeView::restoreItemExpansion(const QModelIndex& index)
+{
+    if(model() == 0)
+    {
+        return;
+    }
+
+    if(index.isValid())
+    {
+        const bool expanded = model()->data(index, m_expansionRole).toBool();
 
         if(isExpanded(index) != expanded)
         {
@@ -363,7 +393,31 @@ void TreeView::restoreExpansion(const QModelIndex& index)
 
     for(int row = 0, rowCount = model()->rowCount(index); row < rowCount; ++row)
     {
-        restoreExpansion(model()->index(row, 0, index));
+        restoreItemExpansion(model()->index(row, 0, index));
+    }
+}
+
+void TreeView::storeScrollBarPositions()
+{
+    if(QStandardItem* item = invisibleRootItem(this))
+    {
+        const int horizontalPosition = horizontalScrollBar()->value();
+        const int verticalPosition = verticalScrollBar()->value();
+
+        item->setData(horizontalPosition, Qt::UserRole + 1);
+        item->setData(verticalPosition, Qt::UserRole + 2);
+    }
+}
+
+void TreeView::restoreScrollBarPositions()
+{
+    if(QStandardItem* item = invisibleRootItem(this))
+    {
+        const int horizontalPosition = item->data(Qt::UserRole + 1).toInt();
+        const int verticalPosition = item->data(Qt::UserRole + 2).toInt();
+
+        horizontalScrollBar()->setValue(horizontalPosition);
+        verticalScrollBar()->setValue(verticalPosition);
     }
 }
 
@@ -389,16 +443,6 @@ void TreeView::contextMenuEvent(QContextMenuEvent* event)
             collapseAll(indexAt(event->pos()));
         }
     }
-}
-
-void TreeView::on_expanded(const QModelIndex& index)
-{
-    model()->setData(index, true, m_expansionRole);
-}
-
-void TreeView::on_collapsed(const QModelIndex& index)
-{
-    model()->setData(index, false, m_expansionRole);
 }
 
 LineEdit::LineEdit(QWidget* parent) : QLineEdit(parent)

@@ -91,6 +91,7 @@ protected slots:
     void on_tabWidget_tabCloseRequested(int index);
     void on_tabWidget_tabContextMenuRequested(const QPoint& globalPos, int index);
 
+    void on_currentTab_documentAboutToChange();
     void on_currentTab_documentChanged();
 
     void on_currentTab_numberOfPagesChaned(int numberOfPages);
