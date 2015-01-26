@@ -35,6 +35,7 @@ along with qpdfview.  If not, see <http://www.gnu.org/licenses/>.
 #include <QVBoxLayout>
 
 #include "searchmodel.h"
+#include "settings.h"
 
 namespace
 {
@@ -367,6 +368,210 @@ void TreeView::restoreExpansion(const QModelIndex& index)
     }
 }
 
+QModelIndex TreeView::handleScrollEvent(QEvent* e)
+{
+    if (e->type() == QEvent::Wheel &&
+        (QApplication::keyboardModifiers() == Qt::ControlModifier ||
+         QApplication::keyboardModifiers() == Qt::ShiftModifier))
+    {
+        QModelIndexList selected = this->selectionModel()->selectedIndexes();
+        if (!selected.isEmpty())
+        {
+            QModelIndex index = selected.at(0);
+            QWheelEvent* ev = (QWheelEvent*) e;
+            QModelIndex sib = this->getNextValidIndex(ev->delta(), index, QApplication::keyboardModifiers() == Qt::ControlModifier,
+                                                               QApplication::keyboardModifiers() == Qt::ControlModifier);
+            if (sib.isValid())
+            {
+                return sib;
+            }
+        }
+    }
+    return QModelIndex();
+}
+
+/*
+  Positive delta means scroll up (forward/away from user)
+ */
+QModelIndex TreeView::getNextValidIndex(int delta, QModelIndex& index, bool skipUnexpanded, bool expandUnexpanded)
+{
+    if (delta > 0)
+    {
+        if (index.row() != 0)
+        {
+            QModelIndex sib = indexAbove(index);
+            if (sib.isValid())
+            {
+                return sib;
+            }
+        }
+        return index.parent();
+    }
+
+    if (index.child(0, index.column()).isValid() &&
+        (skipUnexpanded || model()->data(index, m_expansionRole).toBool()))
+    {
+        if (!isExpanded(index) && expandUnexpanded)
+            setExpanded(index, true);
+        return index.child(0, index.column());
+    }
+    // We return the next valid index
+    return indexBelow(index);
+}
+
+void TreeView::keyPressEvent(QKeyEvent * event)
+{
+    static int shift_expand = 0;
+
+    if (event->key() == Qt::Key_Shift)
+    {
+        shift_expand = 1;
+    }
+
+    if (QApplication::keyboardModifiers() == Qt::ShiftModifier &&
+        (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down))
+    {
+        QModelIndex index = model()->index(0, 0);
+        if (!index.isValid())
+            return;
+        int step = QTreeView::rowHeight(index) * 3;
+        int scrollPos = verticalScrollBar()->value();
+        if (event->key() == Qt::Key_Up)
+            step *= -1;
+        scrollPos += step;
+        verticalScrollBar()->setValue(scrollPos);
+    }
+    else if (QApplication::keyboardModifiers() == Qt::ControlModifier &&
+             (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down))
+    {
+        QModelIndexList selected = selectionModel()->selectedIndexes();
+        if (selected.isEmpty())
+            return;
+
+        QModelIndex index = selected.at(0);
+        index = this->getNextValidIndex(event->key() == Qt::Key_Up, index, QApplication::keyboardModifiers() == Qt::ControlModifier,
+                                        QApplication::keyboardModifiers() == Qt::ControlModifier);
+        if (index.isValid())
+        {
+            emit outlineSelectionChanged(index);
+            selectionModel()->select(index, QItemSelectionModel::Clear);
+            selectionModel()->select(index, QItemSelectionModel::Select);
+            selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
+        }
+    }
+    else if ((event->key() == Qt::Key_Right || event->key() == Qt::Key_Left) &&
+             (QApplication::keyboardModifiers() == Qt::ControlModifier || QApplication::keyboardModifiers() == Qt::ShiftModifier))
+    {
+        QModelIndexList selected = selectionModel()->selectedIndexes();
+        if (selected.isEmpty())
+            return;
+
+        QModelIndex index = selected.at(0);
+
+        // Expand fully
+        if (QApplication::keyboardModifiers() == Qt::ControlModifier)
+        {
+            if (event->key() == Qt::Key_Right)
+                expandAll(index);
+            else
+                collapseAll(index);
+        }
+        else {
+            if (event->key() == Qt::Key_Right)
+            {
+                int expandedLevel = expandLevels(index, shift_expand);
+                if (expandedLevel)
+                {
+                    shift_expand = expandedLevel + 1;
+                }
+            }
+            else
+            {
+                if (collapseLevels(index, shift_expand -1))
+                    shift_expand--;
+            }
+        }
+    } else
+    {
+        QTreeView::keyPressEvent(event);
+    }
+}
+
+int TreeView::expandLevels(const QModelIndex& index, int levels, int level)
+{
+    int expandedLevel = -1;
+
+    if (index.isValid())
+    {
+        if (model()->hasChildren(index))
+        {
+            if (!isExpanded(index))
+            {
+                expand(index);
+            }
+            expandedLevel = std::max(expandedLevel, level);
+        }
+
+        if (levels == level)
+            return expandedLevel;
+
+        for (int row = 0, rowCount = model()->rowCount(index); row < rowCount; ++row)
+        {
+            int expanded = expandLevels(index.child(row, 0), levels, level + 1);
+            if (expanded)
+                expandedLevel = std::max(expandedLevel, expanded);
+        }
+    }
+    return expandedLevel;
+}
+
+bool TreeView::collapseLevels(const QModelIndex& index, int levels, int level)
+{
+    bool hasCollapsed = false;
+    if (index.isValid())
+    {
+        if (levels <= level)
+        {
+            if (isExpanded(index))
+            {
+                collapse(index);
+                hasCollapsed = true;
+            }
+        }
+        else
+        {
+            for(int row = 0, rowCount = model()->rowCount(index); row < rowCount; ++row)
+            {
+                if (collapseLevels(index.child(row, 0), levels, level + 1))
+                    hasCollapsed = true;
+            }
+        }
+    }
+    return hasCollapsed;
+}
+
+
+void TreeView::wheelEvent(QWheelEvent* event)
+{
+    // Pass to parent if neither CTRL nor SHIFT is pressed
+    if (QApplication::keyboardModifiers() != Qt::ControlModifier &&
+        QApplication::keyboardModifiers() != Qt::ShiftModifier)
+    {
+        QTreeView::wheelEvent(event);
+        return;
+    }
+
+    QModelIndex index = handleScrollEvent(event);
+
+    if (index.isValid())
+    {
+        emit outlineSelectionChanged(index);
+        selectionModel()->select(index, QItemSelectionModel::Clear);
+        selectionModel()->select(index, QItemSelectionModel::Select);
+        selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
+    }
+}
+
 void TreeView::contextMenuEvent(QContextMenuEvent* event)
 {
     QTreeView::contextMenuEvent(event);
@@ -511,7 +716,7 @@ int getMappedNumber(MappingSpinBox::TextValueMapper* mapper,
 
 ProgressLineEdit::ProgressLineEdit(QWidget* parent) : QLineEdit(parent),
     m_progress(0)
-{    
+{
 }
 
 int ProgressLineEdit::progress() const

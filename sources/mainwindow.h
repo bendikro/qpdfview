@@ -28,6 +28,7 @@ along with qpdfview.  If not, see <http://www.gnu.org/licenses/>.
 #include <QMainWindow>
 
 #include <QPointer>
+#include <QItemSelection>
 
 #ifdef WITH_DBUS
 
@@ -75,6 +76,7 @@ public:
 
     QSize sizeHint() const;
     QMenu* createPopupMenu();
+    void select_outline_index(const QModelIndex& index);
 
 public slots:
     void show();
@@ -104,6 +106,7 @@ protected slots:
     void on_currentTab_scaleModeChanged(ScaleMode scaleMode);
     void on_currentTab_scaleFactorChanged(qreal scaleFactor);
     void on_currentTab_rotationChanged(Rotation rotation);
+    void on_outlineSelectionChanged(QModelIndex index);
 
     void on_currentTab_linkClicked(int page);
     void on_currentTab_linkClicked(bool newTab, const QString& filePath, int page);
@@ -244,6 +247,7 @@ protected:
 
     void dragEnterEvent(QDragEnterEvent* event);
     void dropEvent(QDropEvent* event);
+    bool eventFilter(QObject* o, QEvent* e);
 
 private:
     Q_DISABLE_COPY(MainWindow)

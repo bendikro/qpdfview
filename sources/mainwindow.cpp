@@ -346,6 +346,7 @@ bool MainWindow::openInNewTab(const QString& filePath, int page, const QRectF& h
         connect(newTab, SIGNAL(scaleModeChanged(ScaleMode)), SLOT(on_currentTab_scaleModeChanged(ScaleMode)));
         connect(newTab, SIGNAL(scaleFactorChanged(qreal)), SLOT(on_currentTab_scaleFactorChanged(qreal)));
         connect(newTab, SIGNAL(rotationChanged(Rotation)), SLOT(on_currentTab_rotationChanged(Rotation)));
+        connect(m_outlineView, SIGNAL(outlineSelectionChanged(QModelIndex)), SLOT(on_outlineSelectionChanged(QModelIndex)));
 
         connect(newTab, SIGNAL(linkClicked(int)), SLOT(on_currentTab_linkClicked(int)));
         connect(newTab, SIGNAL(linkClicked(bool,QString,int)), SLOT(on_currentTab_linkClicked(bool,QString,int)));
@@ -822,6 +823,11 @@ void MainWindow::on_currentTab_rotationChanged(Rotation rotation)
         scheduleSaveTabs();
         scheduleSavePerFileSettings();
     }
+}
+
+void MainWindow::on_outlineSelectionChanged(QModelIndex index)
+{
+    select_outline_index(index);
 }
 
 void MainWindow::on_currentTab_linkClicked(int page)
@@ -1836,7 +1842,7 @@ void MainWindow::on_outline_sectionCountChanged()
     m_outlineView->header()->setVisible(false);
 }
 
-void MainWindow::on_outline_clicked(const QModelIndex& index)
+void MainWindow::select_outline_index(const QModelIndex& index)
 {
     bool ok = false;
     const int page = index.data(Qt::UserRole + 1).toInt(&ok);
@@ -1847,6 +1853,41 @@ void MainWindow::on_outline_clicked(const QModelIndex& index)
     {
         currentTab()->jumpToPage(page, true, left, top);
     }
+}
+
+void MainWindow::on_outline_clicked(const QModelIndex& index)
+{
+    select_outline_index(index);
+}
+
+/*
+  This event filter is used to override the global shortcut keys for
+  document zoom in/out (CTRL + Up / CTRL + Down) and document rotate
+  (CTRL + left / CTRL + right) when the outline widget has keyboard
+  focus, and are used to navigate outline instead.
+ */
+bool MainWindow::eventFilter(QObject *target, QEvent *event)
+{
+    if (target == m_outlineView && event->type() == QEvent::ShortcutOverride)
+    {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+
+        // Override the global zoom in/out and rotate shortcuts
+        if (QApplication::keyboardModifiers() == Qt::ControlModifier &&
+            (keyEvent->key() == Qt::Key_Right || keyEvent->key() == Qt::Key_Left
+             || keyEvent->key() == Qt::Key_Up || keyEvent->key() == Qt::Key_Down))
+        {
+            keyEvent->accept();
+            return true;
+        }
+
+        if (keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return)
+        {
+            //do something
+            return QMainWindow::eventFilter(target,event);
+        }
+    }
+    return QMainWindow::eventFilter(target, event);
 }
 
 void MainWindow::on_properties_sectionCountChanged()
@@ -2799,6 +2840,8 @@ void MainWindow::createDocks()
     m_outlineView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_outlineView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     m_outlineView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_outlineView->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_outlineView->installEventFilter(this); // Used to override global shortcut keys
 
     connect(m_outlineView->header(), SIGNAL(sectionCountChanged(int,int)), SLOT(on_outline_sectionCountChanged()));
     connect(m_outlineView, SIGNAL(clicked(QModelIndex)), SLOT(on_outline_clicked(QModelIndex)));

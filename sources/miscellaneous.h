@@ -32,6 +32,8 @@ along with qpdfview.  If not, see <http://www.gnu.org/licenses/>.
 #include <QProxyStyle>
 #include <QSpinBox>
 #include <QTreeView>
+#include <QScrollBar>
+#include <QFlags>
 
 class QTextLayout;
 
@@ -166,13 +168,26 @@ class TreeView : public QTreeView
 public:
     explicit TreeView(int expansionRole, QWidget* parent = 0);
 
+signals:
+    void outlineSelectionChanged(QModelIndex index);
+
 public slots:
     void expandAbove(const QModelIndex& child);
+
+    int expandLevels(const QModelIndex& index = QModelIndex(), int levels = -1, int level = 1);
+    bool collapseLevels(const QModelIndex& index = QModelIndex(), int levels = -1, int level = 1);
 
     void expandAll(const QModelIndex& index = QModelIndex());
     void collapseAll(const QModelIndex& index = QModelIndex());
 
     void restoreExpansion(const QModelIndex& index = QModelIndex());
+
+    QModelIndex getNextValidIndex(int delta, QModelIndex& index, bool skipUnexpanded, bool expandUnexpanded);
+
+    QModelIndex handleScrollEvent(QEvent* e);
+
+    virtual void wheelEvent(QWheelEvent *event);
+    virtual void keyPressEvent(QKeyEvent * event);
 
 protected:
     void contextMenuEvent(QContextMenuEvent* event);
