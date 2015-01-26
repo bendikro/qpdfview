@@ -356,7 +356,7 @@ void TreeView::collapseAll(const QModelIndex& index)
     }
 }
 
-void TreeView::storeItemExpansion(const QModelIndex& index)
+void TreeView::saveItemExpansion(const QModelIndex& index)
 {
     if(model() == 0)
     {
@@ -370,7 +370,7 @@ void TreeView::storeItemExpansion(const QModelIndex& index)
 
     for(int row = 0, rowCount = model()->rowCount(index); row < rowCount; ++row)
     {
-        restoreItemExpansion(model()->index(row, 0, index));
+        saveItemExpansion(model()->index(row, 0, index));
     }
 }
 
@@ -397,7 +397,7 @@ void TreeView::restoreItemExpansion(const QModelIndex& index)
     }
 }
 
-void TreeView::storeScrollBarPositions()
+void TreeView::saveScrollBarPositions()
 {
     if(QStandardItem* item = invisibleRootItem(this))
     {

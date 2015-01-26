@@ -649,8 +649,8 @@ void MainWindow::on_currentTab_documentAboutToChange()
 {
     if(senderIsCurrentTab())
     {
-        m_outlineView->storeItemExpansion();
-        m_outlineView->storeScrollBarPositions();
+        m_outlineView->saveItemExpansion();
+        m_outlineView->saveScrollBarPositions();
     }
 }
 

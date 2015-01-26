@@ -172,10 +172,10 @@ public slots:
     void expandAll(const QModelIndex& index = QModelIndex());
     void collapseAll(const QModelIndex& index = QModelIndex());
 
-    void storeItemExpansion(const QModelIndex& index = QModelIndex());
+    void saveItemExpansion(const QModelIndex& index = QModelIndex());
     void restoreItemExpansion(const QModelIndex& index = QModelIndex());
 
-    void storeScrollBarPositions();
+    void saveScrollBarPositions();
     void restoreScrollBarPositions();
 
 protected:

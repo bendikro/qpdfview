@@ -254,6 +254,22 @@ void restoreExpandedPaths(QAbstractItemModel* model, const QSet< QString >& path
     }
 }
 
+void saveScrollBarPositions(const QStandardItemModel* model, QPair< int, int >& positions)
+{
+    const QStandardItem* item = model->invisibleRootItem();
+
+    positions.first = item->data(Qt::UserRole + 1).toInt();
+    positions.second = item->data(Qt::UserRole + 2).toInt();
+}
+
+void restoreScrollBarPositions(QStandardItemModel* model, const QPair< int, int >& positions)
+{
+    QStandardItem* item = model->invisibleRootItem();
+
+    item->setData(positions.first, Qt::UserRole + 1);
+    item->setData(positions.second, Qt::UserRole + 2);
+}
+
 } // anonymous
 
 namespace qpdfview
@@ -925,11 +941,14 @@ bool DocumentView::refresh()
         m_currentPage = qMin(m_currentPage, document->numberOfPages());
 
         QSet< QString > expandedPaths;
+        QPair< int, int > scrollBarPositions;
         saveExpandedPaths(m_outlineModel, expandedPaths, QModelIndex(), QString());
+        saveScrollBarPositions(m_outlineModel, scrollBarPositions);
 
         prepareDocument(document, pages);
 
         restoreExpandedPaths(m_outlineModel, expandedPaths, QModelIndex(), QString());
+        restoreScrollBarPositions(m_outlineModel, scrollBarPositions);
 
         prepareScene();
         prepareView(left, top);
