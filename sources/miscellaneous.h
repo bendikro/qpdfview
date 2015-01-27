@@ -176,7 +176,9 @@ public slots:
     void restoreItemExpansion(const QModelIndex& index = QModelIndex());
 
     void saveScrollBarPositions();
-    void restoreScrollBarPositions();
+    void onVerticalScrollbarRangeChanged(int min, int max);
+    void onHorizontalScrollbarRangeChanged(int min, int max);
+    void restoreScrollBarPosition(const int max, const int dataRole, QScrollBar* scrollbar);
 
 protected:
     void contextMenuEvent(QContextMenuEvent* event);

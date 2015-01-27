@@ -680,7 +680,6 @@ void MainWindow::on_currentTab_documentChanged()
     if(senderIsCurrentTab())
     {
         m_outlineView->restoreItemExpansion();
-        m_outlineView->restoreScrollBarPositions();
 
         setWindowTitleForCurrentTab();
     }

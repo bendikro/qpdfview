@@ -306,6 +306,8 @@ void TabWidget::tabRemoved(int index)
 TreeView::TreeView(int expansionRole, QWidget* parent) : QTreeView(parent),
     m_expansionRole(expansionRole)
 {
+    connect(verticalScrollBar(), SIGNAL(rangeChanged(int, int)), this, SLOT(onVerticalScrollbarRangeChanged(int, int)));
+    connect(horizontalScrollBar(), SIGNAL(rangeChanged(int, int)), this, SLOT(onHorizontalScrollbarRangeChanged(int, int)));
 }
 
 void TreeView::expandAbove(const QModelIndex& child)
@@ -366,6 +368,7 @@ void TreeView::saveItemExpansion(const QModelIndex& index)
     if(index.isValid())
     {
         model()->setData(index, isExpanded(index), m_expansionRole);
+        model()->setData(index, selectionModel()->selection().contains(index), m_expansionRole + 1);
     }
 
     for(int row = 0, rowCount = model()->rowCount(index); row < rowCount; ++row)
@@ -384,10 +387,17 @@ void TreeView::restoreItemExpansion(const QModelIndex& index)
     if(index.isValid())
     {
         const bool expanded = model()->data(index, m_expansionRole).toBool();
+        const bool selected = model()->data(index, m_expansionRole + 1).toBool();
 
         if(isExpanded(index) != expanded)
         {
             setExpanded(index, expanded);
+        }
+
+        if(selected)
+        {
+            selectionModel()->select(index, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+            selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
         }
     }
 
@@ -401,23 +411,46 @@ void TreeView::saveScrollBarPositions()
 {
     if(QStandardItem* item = invisibleRootItem(this))
     {
-        const int horizontalPosition = horizontalScrollBar()->value();
-        const int verticalPosition = verticalScrollBar()->value();
+        QList<QVariant> horizontalScroll;
+        horizontalScroll.append(verticalScrollBar()->value());
+        horizontalScroll.append(verticalScrollBar()->maximum());
+        item->setData(QVariant::fromValue(horizontalScroll), Qt::UserRole + 1);
 
-        item->setData(horizontalPosition, Qt::UserRole + 1);
-        item->setData(verticalPosition, Qt::UserRole + 2);
+        QList<QVariant> vertScroll;
+        vertScroll.append(verticalScrollBar()->value());
+        vertScroll.append(verticalScrollBar()->maximum());
+        item->setData(QVariant::fromValue(vertScroll), Qt::UserRole + 2);
     }
 }
 
-void TreeView::restoreScrollBarPositions()
+void TreeView::onHorizontalScrollbarRangeChanged(int min, int max)
+{
+    Q_UNUSED(min)
+    restoreScrollBarPosition(max, Qt::UserRole + 1, horizontalScrollBar());
+}
+
+void TreeView::onVerticalScrollbarRangeChanged(int min, int max)
+{
+    Q_UNUSED(min)
+    restoreScrollBarPosition(max, Qt::UserRole + 2, verticalScrollBar());
+}
+
+void TreeView::restoreScrollBarPosition(const int max, const int dataRole, QScrollBar* scrollbar)
 {
     if(QStandardItem* item = invisibleRootItem(this))
     {
-        const int horizontalPosition = item->data(Qt::UserRole + 1).toInt();
-        const int verticalPosition = item->data(Qt::UserRole + 2).toInt();
+        QList<QVariant> scroll = item->data(dataRole).value<QList<QVariant> >();
+        if(scroll.size() == 0)
+            return;
 
-        horizontalScrollBar()->setValue(horizontalPosition);
-        verticalScrollBar()->setValue(verticalPosition);
+        // Here we know that the size of current scrollable area equals
+        // size when the scrollbar value was saved.
+        if(scroll[1].toInt() == max)
+        {
+            scrollbar->setValue(scroll[0].toInt());
+            scroll.clear();
+            item->setData(QVariant::fromValue(scroll), dataRole);
+        }
     }
 }
 
