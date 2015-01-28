@@ -224,7 +224,7 @@ inline QRectF rectOfResult(const QModelIndex& index)
     return index.data(SearchModel::RectRole).toRectF();
 }
 
-void saveExpandedPaths(const QAbstractItemModel* model, QSet< QString >& paths, const QModelIndex& index, QString path)
+void saveExpandedPaths(const QAbstractItemModel* model, QSet< QString >& paths, QString &selectedItemPath, const QModelIndex& index, QString path)
 {
     path += index.data(Qt::DisplayRole).toString();
 
@@ -233,13 +233,18 @@ void saveExpandedPaths(const QAbstractItemModel* model, QSet< QString >& paths, 
         paths.insert(path);
     }
 
+    if(model->data(index, Model::Document::ExpansionRole + 1).toBool())
+    {
+        selectedItemPath.append(path);
+    }
+
     for(int row = 0, rowCount = model->rowCount(index); row < rowCount; ++row)
     {
-        saveExpandedPaths(model, paths, model->index(row, 0, index), path);
+        saveExpandedPaths(model, paths, selectedItemPath, model->index(row, 0, index), path);
     }
 }
 
-void restoreExpandedPaths(QAbstractItemModel* model, const QSet< QString >& paths, const QModelIndex& index, QString path)
+void restoreExpandedPaths(QAbstractItemModel* model, const QSet< QString >& paths, QString &selectedItemPath, const QModelIndex& index, QString path)
 {
     path += index.data(Qt::DisplayRole).toString();
 
@@ -248,10 +253,31 @@ void restoreExpandedPaths(QAbstractItemModel* model, const QSet< QString >& path
         model->setData(index, true, Model::Document::ExpansionRole);
     }
 
+    if(path == selectedItemPath)
+    {
+        model->setData(index, true, Model::Document::ExpansionRole + 1);
+    }
+
     for(int row = 0, rowCount = model->rowCount(index); row < rowCount; ++row)
     {
-        restoreExpandedPaths(model, paths, model->index(row, 0, index), path);
+        restoreExpandedPaths(model, paths, selectedItemPath, model->index(row, 0, index), path);
     }
+}
+
+void saveScrollBarPositions(const QStandardItemModel* model, QPair< QList<QVariant>, QList<QVariant> >& positions)
+{
+    const QStandardItem* item = model->invisibleRootItem();
+
+    positions.first = item->data(Qt::UserRole + 1).value<QList<QVariant> >();
+    positions.second = item->data(Qt::UserRole + 2).value<QList<QVariant> >();
+}
+
+void restoreScrollBarPositions(QStandardItemModel* model, const QPair< QList<QVariant>, QList<QVariant> >& positions)
+{
+    QStandardItem* item = model->invisibleRootItem();
+
+    item->setData(positions.first, Qt::UserRole + 1);
+    item->setData(positions.second, Qt::UserRole + 2);
 }
 
 } // anonymous
@@ -863,6 +889,8 @@ bool DocumentView::open(const QString& filePath)
             return false;
         }
 
+        emit documentAboutToChange();
+
         m_fileInfo.setFile(filePath);
         m_wasModified = false;
 
@@ -913,6 +941,8 @@ bool DocumentView::refresh()
             return false;
         }
 
+        emit documentAboutToChange();
+
         qreal left = 0.0, top = 0.0;
         saveLeftAndTop(left, top);
 
@@ -921,11 +951,15 @@ bool DocumentView::refresh()
         m_currentPage = qMin(m_currentPage, document->numberOfPages());
 
         QSet< QString > expandedPaths;
-        saveExpandedPaths(m_outlineModel, expandedPaths, QModelIndex(), QString());
+        QString selectedItem;
+        QPair< QList<QVariant>, QList<QVariant> > scrollBarPositions;
+        saveExpandedPaths(m_outlineModel, expandedPaths, selectedItem, QModelIndex(), QString());
+        saveScrollBarPositions(m_outlineModel, scrollBarPositions);
 
         prepareDocument(document, pages);
 
-        restoreExpandedPaths(m_outlineModel, expandedPaths, QModelIndex(), QString());
+        restoreExpandedPaths(m_outlineModel, expandedPaths, selectedItem, QModelIndex(), QString());
+        restoreScrollBarPositions(m_outlineModel, scrollBarPositions);
 
         prepareScene();
         prepareView(left, top);

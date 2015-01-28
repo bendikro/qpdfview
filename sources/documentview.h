@@ -137,7 +137,9 @@ public:
     QPair< QString, QString > searchContext(int page, const QRectF& rect) const;
 
 signals:
+    void documentAboutToChange();
     void documentChanged();
+
     void documentModified();
 
     void numberOfPagesChanged(int numberOfPages);

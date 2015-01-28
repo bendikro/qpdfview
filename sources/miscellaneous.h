@@ -180,7 +180,13 @@ public slots:
     void expandAll(const QModelIndex& index = QModelIndex());
     void collapseAll(const QModelIndex& index = QModelIndex());
 
-    void restoreExpansion(const QModelIndex& index = QModelIndex());
+    void saveItemExpansion(const QModelIndex& index = QModelIndex());
+    void restoreItemExpansion(const QModelIndex& index = QModelIndex());
+
+    void saveScrollBarPositions();
+    void onVerticalScrollbarRangeChanged(int min, int max);
+    void onHorizontalScrollbarRangeChanged(int min, int max);
+    void restoreScrollBarPosition(const int max, const int dataRole, QScrollBar* scrollbar);
 
     QModelIndex getNextValidIndex(int delta, QModelIndex& index, bool skipUnexpanded, bool expandUnexpanded);
 
@@ -192,14 +198,10 @@ public slots:
 protected:
     void contextMenuEvent(QContextMenuEvent* event);
 
-protected slots:
-    void on_expanded(const QModelIndex& index);
-    void on_collapsed(const QModelIndex& index);
-
 private:
     Q_DISABLE_COPY(TreeView)
 
-    int m_expansionRole;
+    const int m_expansionRole;
 
 };
 
